@@ -31,7 +31,7 @@ description = {
 }
 
 dependencies = {
-    "jmespath = 0.1.1-0",
+    "jmespath = 0.1-0",
     "api7-dkjson = 0.1.1",
     "lua-resty-crypto",
     "lua-resty-openssl",
