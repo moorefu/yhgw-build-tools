@@ -62,18 +62,12 @@ make install
 cd /tmp
 rm -rf "luarocks-${LUAROCKS_VERSION}" "luarocks-${LUAROCKS_VERSION}.tar.gz"
 
-# ---- Step 3: Configure LuaRocks custom deps tree ----
-# Redirect lib_dir and lua_dir to /usr/local/openresty/deps/
-CONFIG_FILE="${OPENRESTY_PREFIX}/luajit/etc/luarocks/config-5.1.lua"
-sed -i 's|{ name = "system",.*}|{ name = "system", root = "'"${OPENRESTY_PREFIX}/luajit"'", lib_dir = "'"${OPENRESTY_PREFIX}/deps"'", lua_dir = "'"${OPENRESTY_PREFIX}/deps"'" };|' \
-    "$CONFIG_FILE"
-
-# ---- Step 4: Set environment ----
+# ---- Step 3: Set environment ----
 export PATH="${OPENRESTY_PREFIX}/luajit/bin:${OPENRESTY_PREFIX}/nginx/sbin:${OPENRESTY_PREFIX}/bin:${PATH}"
 export LUA_PATH="${OPENRESTY_PREFIX}/deps/?.ljbc;${OPENRESTY_PREFIX}/deps/?/init.ljbc;${OPENRESTY_PREFIX}/deps/?.lua;${OPENRESTY_PREFIX}/deps/?/init.lua;./?.lua;${OPENRESTY_PREFIX}/luajit/share/luajit-${LUAJIT_SUFFIX}/?.lua;/usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua;${OPENRESTY_PREFIX}/luajit/share/lua/5.1/?.lua;${OPENRESTY_PREFIX}/luajit/share/lua/5.1/?/init.lua"
 export LUA_CPATH="${OPENRESTY_PREFIX}/deps/?.so;./?.so;/usr/local/lib/lua/5.1/?.so;${OPENRESTY_PREFIX}/luajit/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;${OPENRESTY_PREFIX}/luajit/lib/lua/5.1/?.so"
 
-# ---- Step 5: Install Lua dependencies from rockspecs ----
+# ---- Step 4: Install Lua dependencies from rockspecs ----
 DEPS_PATH="${OPENRESTY_PREFIX}/deps"
 
 echo "=== Installing apisix deps ==="
@@ -85,11 +79,11 @@ echo "=== Installing yhgw deps ==="
     --tree="${DEPS_PATH}" --only-deps --local \
     --server=https://luarocks.org/manifests/moorefu
 
-# ---- Step 6: Verify ----
+# ---- Step 5: Verify ----
 echo "=== Installed packages ==="
 "${LUAROCKS_BIN}" list --tree="${DEPS_PATH}"
 
-# ---- Step 7: Package ----
+# ---- Step 6: Package ----
 mkdir -p "${OUTPUT_DIR}"
 ARTIFACT_NAME="openresty-${RELEASE_VERSION}-linux-glibc2.17-${ARCH}"
 echo "=== Packaging ${OPENRESTY_PREFIX} → ${OUTPUT_DIR}/${ARTIFACT_NAME}.tar.xz ==="
