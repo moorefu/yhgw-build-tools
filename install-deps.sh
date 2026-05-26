@@ -32,9 +32,18 @@ yum-config-manager --add-repo https://openresty.org/package/centos/openresty.rep
 yum install -y \
     "openresty-${RPM_VERSION}.${RPM_DIST}.${ARCH}" \
     "openresty-opm-${RPM_VERSION}.${RPM_DIST}" \
-    "openresty-resty-${RPM_VERSION}.${RPM_DIST}"
+    "openresty-resty-${RPM_VERSION}.${RPM_DIST}" \
+    && yum clean all
 
 # ---- Step 2: Build & install LuaRocks from source ----
+# Auto-detect LuaJIT suffix from the installed OpenResty
+LUAJIT_SUFFIX=$(find "${OPENRESTY_PREFIX}/luajit/share/" -maxdepth 1 -type d -name 'luajit-*' 2>/dev/null | head -1 | sed 's|.*/luajit-||')
+if [ -z "$LUAJIT_SUFFIX" ]; then
+    echo "ERROR: Could not detect LuaJIT suffix. Check OpenResty installation."
+    exit 1
+fi
+echo "Detected LuaJIT suffix: ${LUAJIT_SUFFIX}"
+
 cd /tmp
 curl -fSL "https://luarocks.github.io/luarocks/releases/luarocks-${LUAROCKS_VERSION}.tar.gz" \
     -o "luarocks-${LUAROCKS_VERSION}.tar.gz"
@@ -44,7 +53,7 @@ cd "luarocks-${LUAROCKS_VERSION}"
 ./configure \
     --prefix="${OPENRESTY_PREFIX}/luajit" \
     --with-lua="${OPENRESTY_PREFIX}/luajit" \
-    --lua-suffix=jit-2.1.0-beta3 \
+    --lua-suffix="${LUAJIT_SUFFIX}" \
     --with-lua-include="${OPENRESTY_PREFIX}/luajit/include/luajit-2.1"
 
 make build
@@ -55,12 +64,13 @@ rm -rf "luarocks-${LUAROCKS_VERSION}" "luarocks-${LUAROCKS_VERSION}.tar.gz"
 
 # ---- Step 3: Configure LuaRocks custom deps tree ----
 # Redirect lib_dir and lua_dir to /usr/local/openresty/deps/
-sed -i '5 c \   { name = "system", root = "/usr/local/openresty/luajit",lib_dir = "/usr/local/openresty/deps",lua_dir = "/usr/local/openresty/deps" };' \
-    "${OPENRESTY_PREFIX}/luajit/etc/luarocks/config-5.1.lua"
+CONFIG_FILE="${OPENRESTY_PREFIX}/luajit/etc/luarocks/config-5.1.lua"
+sed -i 's|{ name = "system",.*}|{ name = "system", root = "'"${OPENRESTY_PREFIX}/luajit"'", lib_dir = "'"${OPENRESTY_PREFIX}/deps"'", lua_dir = "'"${OPENRESTY_PREFIX}/deps"'" };|' \
+    "$CONFIG_FILE"
 
 # ---- Step 4: Set environment ----
 export PATH="${OPENRESTY_PREFIX}/luajit/bin:${OPENRESTY_PREFIX}/nginx/sbin:${OPENRESTY_PREFIX}/bin:${PATH}"
-export LUA_PATH="${OPENRESTY_PREFIX}/deps/?.ljbc;${OPENRESTY_PREFIX}/deps/?/init.ljbc;${OPENRESTY_PREFIX}/deps/?.lua;${OPENRESTY_PREFIX}/deps/?/init.lua;./?.lua;${OPENRESTY_PREFIX}/luajit/share/luajit-2.1.0-beta3/?.lua;/usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua;${OPENRESTY_PREFIX}/luajit/share/lua/5.1/?.lua;${OPENRESTY_PREFIX}/luajit/share/lua/5.1/?/init.lua"
+export LUA_PATH="${OPENRESTY_PREFIX}/deps/?.ljbc;${OPENRESTY_PREFIX}/deps/?/init.ljbc;${OPENRESTY_PREFIX}/deps/?.lua;${OPENRESTY_PREFIX}/deps/?/init.lua;./?.lua;${OPENRESTY_PREFIX}/luajit/share/luajit-${LUAJIT_SUFFIX}/?.lua;/usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua;${OPENRESTY_PREFIX}/luajit/share/lua/5.1/?.lua;${OPENRESTY_PREFIX}/luajit/share/lua/5.1/?/init.lua"
 export LUA_CPATH="${OPENRESTY_PREFIX}/deps/?.so;./?.so;/usr/local/lib/lua/5.1/?.so;${OPENRESTY_PREFIX}/luajit/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;${OPENRESTY_PREFIX}/luajit/lib/lua/5.1/?.so"
 
 # ---- Step 5: Install Lua dependencies from rockspecs ----
@@ -77,7 +87,7 @@ echo "=== Installing yhgw deps ==="
 
 # ---- Step 6: Verify ----
 echo "=== Installed packages ==="
-"${LUAROCKS_BIN}" list
+"${LUAROCKS_BIN}" list --tree="${DEPS_PATH}"
 
 # ---- Step 7: Package ----
 mkdir -p "${OUTPUT_DIR}"
