@@ -74,6 +74,11 @@ echo "=== Installing apisix deps ==="
 "${LUAROCKS_BIN}" install "${ROCKSPEC_DIR}/apisix-1.4.1-0.rockspec" \
     --tree="${DEPS_PATH}" --only-deps --local
 
+# jmespath from the custom server has a broken src.rock build; install it
+# from the default server first so luarocks skips it during yhgw resolution
+echo "=== Pre-installing jmespath (broken on custom server) ==="
+"${LUAROCKS_BIN}" install jmespath --tree="${DEPS_PATH}"
+
 echo "=== Installing yhgw deps ==="
 "${LUAROCKS_BIN}" install "${ROCKSPEC_DIR}/yhgw-master-0.rockspec" \
     --tree="${DEPS_PATH}" --only-deps --local \
