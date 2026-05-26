@@ -6,10 +6,6 @@ permissions:
 on:
   push:
     branches: [master, main]
-    paths:
-      - 'install-deps.sh'
-      - 'rocksspec/**'
-      - '.github/workflows/build-openresty.yml'
 
   workflow_call:
     inputs:
